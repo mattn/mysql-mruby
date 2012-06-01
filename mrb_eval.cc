@@ -16,7 +16,7 @@ extern "C" {
 #define EXPORT
 #endif
 
-#include <string>
+#include <cstring>
 
 extern "C" {
 EXPORT my_bool mrb_eval_init(UDF_INIT* initid, UDF_ARGS* args, char* message);
@@ -52,18 +52,22 @@ mrb_eval_deinit(UDF_INIT* initid) {
 EXPORT
 char*
 mrb_eval(UDF_INIT* initid, UDF_ARGS* args, char* result, unsigned long* length, char* is_null, char* error) {
+  mrb_state *mrb;
+  struct mrb_parser_state* st;
+  int n;
+  char* p;
   mrb_value v;
   if (args->lengths[0] == 0)
     goto error;
 
-  mrb_state *mrb = (mrb_state*) initid->ptr;
-  struct mrb_parser_state* st = mrb_parse_string(mrb, args->args[0]);
-  int n = mrb_generate_code(mrb, st->tree);
+  mrb = (mrb_state*) initid->ptr;
+  st = mrb_parse_string(mrb, args->args[0]);
+  n = mrb_generate_code(mrb, st->tree);
   mrb_pool_close(st->pool);
   v = mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
   v = mrb_funcall(mrb, v, "to_s", 0);
   *length = RSTRING_LEN(v);
-  char* p = (char*) malloc(RSTRING_LEN(v) + 1);
+  p = (char*) malloc(RSTRING_LEN(v) + 1);
   strcpy(p, RSTRING_PTR(v));
   return p;
 
