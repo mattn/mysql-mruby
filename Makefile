@@ -1,2 +1,8 @@
+ifeq ($(OS),Windows_NT)
+CFLAGS=$(shell mysql_config --cflags) -DDBUG_OFF -fpermissive
+else
+CFLAGS=$(shell mysql_config --cflags) -DDBUG_OFF -fPIC -fpermissive
+endif
+
 all:
-	g++ `mysql_config --cflags` -Imruby/include -shared -fPIC -Wall -g mrb_eval.cc -o mrb_eval.so mruby/lib/libmruby.a
+	g++ $(CFLAGS) -Imruby/include -shared -Wall -g mrb_eval.cc -o mrb_eval.so mruby/lib/libmruby.a $(EXTRA_LIB)

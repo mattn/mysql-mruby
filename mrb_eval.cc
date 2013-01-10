@@ -1,3 +1,12 @@
+#ifdef _WIN32
+#define _WIN32_WINNT 0x0501 
+#include <winsock2.h>
+#define _SSIZE_T_
+#define _NO_OLDNAMES
+typedef PVOID RTL_SRWLOCK;
+typedef RTL_SRWLOCK SRWLOCK, *PSRWLOCK;
+typedef PVOID CONDITION_VARIABLE, *PCONDITION_VARIABLE;
+#endif
 #include <my_global.h>
 
 extern "C" {
@@ -8,6 +17,7 @@ extern "C" {
 #include <mruby/compile.h>
 #include <mruby/proc.h>
 #include <mruby/string.h>
+#include <mruby/variable.h>
 }
 
 #ifdef _WIN32
@@ -24,6 +34,11 @@ EXPORT void mrb_eval_deinit(UDF_INIT* initid);
 EXPORT char* mrb_eval(UDF_INIT* initid, UDF_ARGS* args, char* result, unsigned long* length, char* is_null, char* error);
 }
 
+typedef struct {
+  mrb_state* mrb;
+  struct mrbc_context* ctx;
+} mrb_mysql;
+
 EXPORT
 my_bool
 mrb_eval_init(UDF_INIT* initid, UDF_ARGS* args, char* message) {
@@ -37,7 +52,10 @@ mrb_eval_init(UDF_INIT* initid, UDF_ARGS* args, char* message) {
   }
   args->maybe_null[0] = 0;
 
-  initid->ptr = (char *)(void *) mrb_open();
+  mrb_mysql* m = (mrb_mysql*) malloc(sizeof(mrb_mysql));
+  m->mrb = mrb_open();
+  m->ctx = mrbc_context_new(m->mrb);
+  initid->ptr = (char *)(void *) m;
   initid->const_item = 1;
 
   return 0;
@@ -46,32 +64,36 @@ mrb_eval_init(UDF_INIT* initid, UDF_ARGS* args, char* message) {
 EXPORT
 void
 mrb_eval_deinit(UDF_INIT* initid) {
-  mrb_close((mrb_state*) initid->ptr);
+  mrb_mysql* m = (mrb_mysql*) initid->ptr;
+  mrb_state* mrb = m->mrb;
+  mrb_close(mrb);
+  mrbc_context_free(mrb, m->ctx);
+  free(m);
+}
+
+void
+mrb_init_mrblib(mrb_state *mrb) {
+}
+
+void
+mrb_init_mrbgems(mrb_state* mrb) {
 }
 
 EXPORT
 char*
 mrb_eval(UDF_INIT* initid, UDF_ARGS* args, char* result, unsigned long* length, char* is_null, char* error) {
-  mrb_state *mrb;
-  struct mrb_parser_state* st;
-  int n;
-  char* p;
-  mrb_value v;
-  if (args->lengths[0] == 0)
-    goto error;
+  if (args->lengths[0] != 0) {
+    mrb_mysql* m = (mrb_mysql*) initid->ptr;
+    mrb_state* mrb = m->mrb;
 
-  mrb = (mrb_state*) initid->ptr;
-  st = mrb_parse_string(mrb, args->args[0]);
-  n = mrb_generate_code(mrb, st->tree);
-  mrb_pool_close(st->pool);
-  v = mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_nil_value());
-  v = mrb_funcall(mrb, v, "to_s", 0);
-  *length = RSTRING_LEN(v);
-  p = (char*) malloc(RSTRING_LEN(v) + 1);
-  strcpy(p, RSTRING_PTR(v));
-  return p;
+    mrb_value v = mrb_load_string_cxt(mrb, args->args[0], m->ctx);
+    v = mrb_funcall(mrb, v, "to_s", 0);
+    *length = RSTRING_LEN(v);
+    char* p = (char*) malloc(RSTRING_LEN(v) + 1);
+    strcpy(p, RSTRING_PTR(v));
+    return p;
+  }
 
-error:
   *is_null = 1;
   return NULL;
 }
