@@ -66,8 +66,8 @@ void
 mrb_eval_deinit(UDF_INIT* initid) {
   mrb_mysql* m = (mrb_mysql*) initid->ptr;
   mrb_state* mrb = m->mrb;
-  mrb_close(mrb);
   mrbc_context_free(mrb, m->ctx);
+  mrb_close(mrb);
   free(m);
 }
 
