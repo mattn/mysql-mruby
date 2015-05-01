@@ -19,6 +19,7 @@ extern "C" {
 #include <mruby/compile.h>
 #include <mruby/proc.h>
 #include <mruby/string.h>
+#include <mruby/array.h>
 #include <mruby/variable.h>
 }
 
@@ -44,8 +45,8 @@ typedef struct {
 EXPORT
 my_bool
 mrb_eval_init(UDF_INIT* initid, UDF_ARGS* args, char* message) {
-  if (args->arg_count != 1) {
-    strncpy(message, "mrb_eval: required just one argument", MYSQL_ERRMSG_SIZE);
+  if (args->arg_count == 0) {
+    strncpy(message, "mrb_eval: required just one argument at least", MYSQL_ERRMSG_SIZE);
     return 1;
   }
   if (args->arg_type[0] != STRING_RESULT) {
@@ -84,16 +85,51 @@ mrb_init_mrbgems(mrb_state* mrb) {
 EXPORT
 char*
 mrb_eval(UDF_INIT* initid, UDF_ARGS* args, char* result, unsigned long* length, char* is_null, char* error) {
-  if (args->lengths[0] != 0) {
+  if (args->arg_count > 0) {
     mrb_mysql* m = (mrb_mysql*) initid->ptr;
     mrb_state* mrb = m->mrb;
+    char *p;
+    int n;
+
+    mrb_value argv = mrb_ary_new(mrb);
+    for (n = 1; n < args->arg_count; n++) {
+      switch (args->arg_type[n]) {
+      case STRING_RESULT:
+        mrb_ary_push(mrb, argv, mrb_str_new_cstr(mrb, args->args[n]));
+        break;
+      case INT_RESULT:
+        mrb_ary_push(mrb, argv, mrb_fixnum_value((mrb_int)*(int*)(args->args[n])));
+        break;
+      case REAL_RESULT:
+        mrb_ary_push(mrb, argv, mrb_float_value(mrb, (mrb_float)*(double*)&(args->args[n])));
+        break;
+      default:
+        *error = 1;
+        return strdup("invalid type");
+      }
+    }
+    mrb_define_global_const(mrb, "ARGV", argv);
 
     mrb_value v = mrb_load_string_cxt(mrb, args->args[0], m->ctx);
-    v = mrb_funcall(mrb, v, "to_s", 0);
-    *length = RSTRING_LEN(v);
-    char* p = (char*) malloc(RSTRING_LEN(v) + 1);
-    strcpy(p, RSTRING_PTR(v));
-    return p;
+    if (mrb->exc == 0) {
+      v = mrb_funcall(mrb, v, "to_s", 0);
+      if (mrb->exc == 0) {
+        *length = RSTRING_LEN(v);
+        p = (char*) malloc(RSTRING_LEN(v) + 1);
+        if (p) {
+          strcpy(p, RSTRING_PTR(v));
+          return p;
+        }
+        *is_null = 1;
+        return NULL;
+      }
+    }
+    mrb_value exc = mrb_obj_value(mrb->exc);
+    mrb_value inspect = mrb_inspect(mrb, exc);
+    *error = 1;
+    p = mrb_str_to_cstr(mrb, inspect);
+    *length = strlen(p);
+    return strdup(p);
   }
 
   *is_null = 1;
