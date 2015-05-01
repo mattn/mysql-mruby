@@ -38,6 +38,26 @@ mysql> select mrb_eval('ARGV', now(), now());
 1 row in set (0.00 sec)
 ```
 
+```
+mysql> create table foo(id integer primary key auto_increment, value text);
+Query OK, 0 rows affected (0.39 sec)
+
+mysql> insert into foo(value) values('foo');
+Query OK, 1 row affected (0.08 sec)
+
+mysql> insert into foo(value) values('boo');
+Query OK, 1 row affected (0.02 sec)
+
+mysql> select mrb_eval('ARGV[0]', value) from foo;
++----------------------------+
+| mrb_eval('ARGV[0]', value) |
++----------------------------+
+| foo                        |
+| boo                        |
++----------------------------+
+2 rows in set (0.00 sec)
+```
+
 ## Author
 
 Yasuhiro Matsumoto (a.k.a mattn)
