@@ -3,9 +3,11 @@
 #include <winsock2.h>
 #define _SSIZE_T_
 #define _NO_OLDNAMES
+#ifdef __MINGW64_VERSION_MAJOR
 typedef PVOID RTL_SRWLOCK;
 typedef RTL_SRWLOCK SRWLOCK, *PSRWLOCK;
 typedef PVOID CONDITION_VARIABLE, *PCONDITION_VARIABLE;
+#endif
 #endif
 #include <my_global.h>
 
