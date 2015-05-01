@@ -1,9 +1,10 @@
 #ifdef _WIN32
+#define _TIMESPEC_DEFINED
 #define _WIN32_WINNT 0x0501 
 #include <winsock2.h>
 #define _SSIZE_T_
 #define _NO_OLDNAMES
-#ifdef __MINGW64_VERSION_MAJOR
+#ifndef RTL_SRWLOCK_INIT
 typedef PVOID RTL_SRWLOCK;
 typedef RTL_SRWLOCK SRWLOCK, *PSRWLOCK;
 typedef PVOID CONDITION_VARIABLE, *PCONDITION_VARIABLE;
@@ -24,7 +25,7 @@ extern "C" {
 }
 
 #ifdef _WIN32
-#define EXPORT _declspec(dllexport)
+#define EXPORT __declspec(dllexport)
 #else
 #define EXPORT
 #endif
