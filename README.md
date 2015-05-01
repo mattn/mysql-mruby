@@ -1,6 +1,6 @@
 # mysql-mruby
 
-MyQL UDF with mruby
+MySQL UDF with mruby
 
 ## Installation
 
