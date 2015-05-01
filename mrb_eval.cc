@@ -98,10 +98,13 @@ mrb_eval(UDF_INIT* initid, UDF_ARGS* args, char* result, unsigned long* length, 
         mrb_ary_push(mrb, argv, mrb_str_new_cstr(mrb, args->args[n]));
         break;
       case INT_RESULT:
-        mrb_ary_push(mrb, argv, mrb_fixnum_value((mrb_int)*(int*)(args->args[n])));
+        mrb_ary_push(mrb, argv, mrb_fixnum_value((mrb_int)*(long long*)(args->args[n])));
         break;
       case REAL_RESULT:
         mrb_ary_push(mrb, argv, mrb_float_value(mrb, (mrb_float)*(double*)&(args->args[n])));
+        break;
+      case DECIMAL_RESULT:
+        mrb_ary_push(mrb, argv, mrb_str_new_cstr(mrb, args->args[n]));
         break;
       default:
         *error = 1;
