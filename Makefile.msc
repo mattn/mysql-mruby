@@ -1,7 +1,10 @@
+MRUBY= ../mruby
+MYSQL= "C:/Program Files/mysql-5.6.24-win32"
+
 all: mrb_eval.dll
 
 mrb_eval.dll : mrb_eval.obj
-	link -dll mrb_eval.obj user32.lib mruby.lib mrbc.lib /nodefaultlib:libcmt
+	link -dll mrb_eval.obj user32.lib $(MRUBY)/build/host/lib/libmruby.lib /nodefaultlib:libcmt
 
 mrb_eval.obj : mrb_eval.cc
-	cl -EHsc -DMYSQL_DYNAMIC_PLUGIN -c -I../mruby/include -Ic:/progra~1/mysql/mysqls~1.5/include mrb_eval.cc
+	cl -EHsc -DMYSQL_DYNAMIC_PLUGIN -c -I$(MRUBY)/include -I$(MYSQL)/include mrb_eval.cc
